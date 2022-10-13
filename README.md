@@ -1,1 +1,1 @@
-# standup-slack-bot
+# Stand up Slack Bot
