@@ -61,6 +61,21 @@ def alert_before_sending_standups(client=app.client):
 
     except SlackApiError as e:
         return(f"Error: {e}")
+    
+@repeat(every().monday.at("18:06"))
+@repeat(every().tuesday.at("18:06"))
+@repeat(every().wednesday.at("18:06"))
+@repeat(every().thursday("18:06"))
+def alert_after_sending_standups(client=app.client):   
+    try:
+        result = client.chat_postMessage(
+            channel="#building-slack-bots",
+            text="Good evening once more! I have sent out standups to everyone. Please take time to do your standups! "
+        )
+        return(result)
+
+    except SlackApiError as e:
+        return(f"Error: {e}")
 
 while app:
     schedule.run_pending()
