@@ -1,7 +1,6 @@
 from http import client
 from lib2to3.pgen2 import token
 import os
-from sched import scheduler
 from webbrowser import get
 
 from slack_bolt import App
@@ -11,37 +10,21 @@ import schedule
 from schedule import every, repeat, run_pending
 import time
 
+from blocks import BLOCK_STANDUP_MESSAGE, BLOCK_HOME_INTRO
+
 app = App(
     token=os.environ.get("SLACK_BOT_TOKEN"),
     signing_secret=os.environ.get("SLACK_SIGNING_SECRET")
 )
 
 @app.event("app_home_opened")
-def update_home_tab_with_introduction(client,event,logger):
+def home_tab_introduction(client,event,logger):
     try:
         client.views_publish(
             user_id=event["user"],
             view={
                 "type": "home",
-                "blocks": [
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": "*Welcome to _Stand up Bot_* :tada:"
-                        }
-                    },
-                    {
-                        "type": "divider"
-                    },
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": "Hi, my name is Stand up Bot. I am a friendly bot and i will be in charge of the daily stand ups in this workspace."
-                        }
-                    }
-                ]
+                "blocks": BLOCK_HOME_INTRO
             }
         )
     except Exception as e:
@@ -50,11 +33,11 @@ def update_home_tab_with_introduction(client,event,logger):
 @repeat(every().monday.at("18:00"))
 @repeat(every().tuesday.at("18:00"))
 @repeat(every().wednesday.at("18:00"))
-@repeat(every().thursday("18:00"))
+@repeat(every().thursday.at("18:00"))
 def alert_before_sending_standups(client=app.client):   
     try:
         result = client.chat_postMessage(
-            channel="#building-slack-bots",
+            channel="#all-students",
             text="Good evening everyone! It is Stand up time, I am sending out standups in 5 minutes time. "
         )
         return(result)
@@ -65,11 +48,11 @@ def alert_before_sending_standups(client=app.client):
 @repeat(every().monday.at("18:06"))
 @repeat(every().tuesday.at("18:06"))
 @repeat(every().wednesday.at("18:06"))
-@repeat(every().thursday("18:06"))
+@repeat(every().thursday.at("18:06"))
 def alert_after_sending_standups(client=app.client):   
     try:
         result = client.chat_postMessage(
-            channel="#building-slack-bots",
+            channel="#all-students",
             text="Good evening once more! I have sent out standups to everyone. Please take time to do your standups! "
         )
         return(result)
@@ -77,6 +60,28 @@ def alert_after_sending_standups(client=app.client):
     except SlackApiError as e:
         return(f"Error: {e}")
 
+@repeat(every().monday.at("18:05"))
+@repeat(every().tuesday.at("18:05"))
+@repeat(every().wednesday.at("18:05"))
+@repeat(every().thursday.at("18:05"))
+def send_stand_up(client=app.client,):
+    members = get_members(client=app.client)
+    TMs = []
+    for member in members:
+        if member not in TMs:
+            client.chat_postMessage(
+                channel=member,
+                blocks=BLOCK_STANDUP_MESSAGE
+            )
+
+def get_members(client=app.client):
+    conversations = client.conversations_list()
+    members = []
+    for channel in conversations['channels']:
+        if channel["name"]=="all-students":
+            members = client.conversations_members(channel=channel["id"])["members"]
+    return members 
+       
 while app:
     schedule.run_pending()
     time.sleep(1)
